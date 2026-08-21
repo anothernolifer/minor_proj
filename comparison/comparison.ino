@@ -8,15 +8,11 @@
 // CONFIGURATION
 // ============================================================
 
-// Select ONE target at a time:
-//
 // 0 = Fan Speed
 // 1 = Light Intensity
 #define TARGET 0
 
 
-// Select ONE model at a time:
-//
 // 0 = BASELINE (no ML model)
 // 1 = Decision Tree
 // 2 = Naive Bayes
@@ -31,12 +27,32 @@
 
 
 // ============================================================
+// BASELINE VALUES
+// ============================================================
+//
+// STEP 1:
+// Run the code with MODEL_TYPE = 0.
+//
+// Record:
+//   Running firmware size
+//   Free heap after boot
+//
+// STEP 2:
+// Replace these example values with your baseline results.
+
+#define BASELINE_FIRMWARE_SIZE  200000
+#define BASELINE_FREE_HEAP      280000
+
+
+// ============================================================
 // MODEL INCLUDES
 // ============================================================
 
 #if MODEL_TYPE == 1
 
-    // ---------------- DECISION TREE ----------------
+    // --------------------------------------------------------
+    // DECISION TREE
+    // --------------------------------------------------------
 
     #if TARGET == 0
 
@@ -55,7 +71,9 @@
 
 #elif MODEL_TYPE == 2
 
-    // ---------------- NAIVE BAYES ----------------
+    // --------------------------------------------------------
+    // NAIVE BAYES
+    // --------------------------------------------------------
 
     #if TARGET == 0
 
@@ -85,13 +103,20 @@ volatile int predictionResult = 0;
 // INPUT DATA
 // ============================================================
 //
-// Feature order MUST match training exactly:
-// Fan speed:       count, co2_level, temp, humidity   (4 features)
-// Light intensity: count, co2_level, ldr_diff          (3 features)
+// Feature order:
+//
+// Fan Speed:
+// count, co2_level, temp, humidity
+//
+// Light Intensity:
+// count, co2_level, ldr_diff
+//
+// IMPORTANT:
+// Use the same feature order used during model training.
+
 
 #if TARGET == 0
 
-    // FAN SPEED INPUT: count=15, co2_level=800, temp=32.0, humidity=60.0
     float input[] = {
         15.0,
         800.0,
@@ -99,9 +124,9 @@ volatile int predictionResult = 0;
         60.0
     };
 
+
 #elif TARGET == 1
 
-    // LIGHT INTENSITY INPUT: count=15, co2_level=800, ldr_diff=500
     float input[] = {
         15.0,
         800.0,
@@ -112,7 +137,44 @@ volatile int predictionResult = 0;
 
 
 // ============================================================
-// PRINT HEADER
+// GET TARGET NAME
+// ============================================================
+
+const char* getTargetName() {
+
+#if TARGET == 0
+    return "Fan Speed";
+
+#elif TARGET == 1
+    return "Light Intensity";
+
+#endif
+
+}
+
+
+// ============================================================
+// GET MODEL NAME
+// ============================================================
+
+const char* getModelName() {
+
+#if MODEL_TYPE == 0
+    return "Baseline";
+
+#elif MODEL_TYPE == 1
+    return "Decision Tree";
+
+#elif MODEL_TYPE == 2
+    return "Naive Bayes";
+
+#endif
+
+}
+
+
+// ============================================================
+// PRINT CONFIGURATION
 // ============================================================
 
 void printConfiguration() {
@@ -123,40 +185,28 @@ void printConfiguration() {
     Serial.println("==================================================");
 
     Serial.print("Target: ");
-
-    #if TARGET == 0
-        Serial.println("Fan Speed");
-    #elif TARGET == 1
-        Serial.println("Light Intensity");
-    #endif
-
+    Serial.println(getTargetName());
 
     Serial.print("Model: ");
-
-    #if MODEL_TYPE == 0
-        Serial.println("Baseline");
-    #elif MODEL_TYPE == 1
-        Serial.println("Decision Tree");
-    #elif MODEL_TYPE == 2
-        Serial.println("Naive Bayes");
-    #endif
+    Serial.println(getModelName());
 
     Serial.print("CPU Frequency: ");
     Serial.print(getCpuFrequencyMhz());
     Serial.println(" MHz");
 
     Serial.println("==================================================");
-    Serial.println();
+
 }
 
 
 // ============================================================
-// MEMORY INFORMATION
+// PRINT MEMORY INFORMATION
 // ============================================================
 
 void printMemoryInfo(const char *stage) {
 
     Serial.println();
+
     Serial.println("---------------- MEMORY INFO ----------------");
 
     Serial.print("Stage: ");
@@ -179,11 +229,12 @@ void printMemoryInfo(const char *stage) {
     Serial.println(" bytes");
 
     Serial.println("---------------------------------------------");
+
 }
 
 
 // ============================================================
-// FIRMWARE SIZE
+// PRINT FIRMWARE SIZE
 // ============================================================
 
 void printFirmwareSize() {
@@ -191,6 +242,7 @@ void printFirmwareSize() {
     size_t sketchSize = ESP.getSketchSize();
 
     Serial.println();
+
     Serial.println("---------------- FIRMWARE SIZE ----------------");
 
     Serial.print("Running firmware size: ");
@@ -211,19 +263,132 @@ void printFirmwareSize() {
 
 
 // ============================================================
+// PRINT FINAL RESULT TABLE
+// ============================================================
+
+void printResultTable(
+    double inferenceTimeMs,
+    float modelSizeKB,
+    int64_t ramImpact
+) {
+
+    Serial.println();
+    Serial.println();
+    Serial.println("==========================================================================================");
+
+    Serial.println(
+        "| Target          | Model         | Inference Time (ms) | Model Size (KB) | RAM Impact (bytes) |"
+    );
+
+    Serial.println("==========================================================================================");
+
+    Serial.print("| ");
+
+
+    // --------------------------------------------------------
+    // TARGET
+    // --------------------------------------------------------
+
+#if TARGET == 0
+
+    Serial.print("Fan Speed       ");
+
+#elif TARGET == 1
+
+    Serial.print("Light Intensity ");
+
+#endif
+
+
+    Serial.print("| ");
+
+
+    // --------------------------------------------------------
+    // MODEL
+    // --------------------------------------------------------
+
+#if MODEL_TYPE == 1
+
+    Serial.print("Decision Tree ");
+
+#elif MODEL_TYPE == 2
+
+    Serial.print("Naive Bayes   ");
+
+#endif
+
+
+    Serial.print("| ");
+
+
+    // --------------------------------------------------------
+    // INFERENCE TIME
+    // --------------------------------------------------------
+
+    Serial.print(inferenceTimeMs, 6);
+
+
+    // Add spaces
+    Serial.print("            | ");
+
+
+    // --------------------------------------------------------
+    // MODEL SIZE
+    // --------------------------------------------------------
+
+    Serial.print(modelSizeKB, 3);
+
+
+    Serial.print("           | ");
+
+
+    // --------------------------------------------------------
+    // RAM IMPACT
+    // --------------------------------------------------------
+
+    Serial.print(ramImpact);
+
+
+    Serial.println("                |");
+
+    Serial.println("==========================================================================================");
+
+}
+
+
+// ============================================================
 // BASELINE BENCHMARK
 // ============================================================
 
 void runBaselineBenchmark() {
 
     Serial.println();
-    Serial.println("BASELINE BUILD");
-    Serial.println("No ML model is included.");
+    Serial.println("==================================================");
+    Serial.println("               BASELINE MEASUREMENT");
+    Serial.println("==================================================");
 
-    printMemoryInfo("Baseline");
+    size_t firmwareSize = ESP.getSketchSize();
+    size_t freeHeap = ESP.getFreeHeap();
+
+    Serial.print("BASELINE_FIRMWARE_SIZE = ");
+    Serial.println(firmwareSize);
+
+    Serial.print("BASELINE_FREE_HEAP = ");
+    Serial.println(freeHeap);
 
     Serial.println();
-    Serial.println("No inference time is measured for baseline.");
+    Serial.println("Copy these values into:");
+    Serial.println();
+
+    Serial.print("#define BASELINE_FIRMWARE_SIZE ");
+    Serial.println(firmwareSize);
+
+    Serial.print("#define BASELINE_FREE_HEAP     ");
+    Serial.println(freeHeap);
+
+    Serial.println();
+    Serial.println("==================================================");
+
 }
 
 
@@ -234,32 +399,25 @@ void runBaselineBenchmark() {
 void runModelBenchmark() {
 
     Serial.println();
+
     Serial.println("==================================================");
     Serial.println("             MODEL BENCHMARK START");
     Serial.println("==================================================");
 
 
     // --------------------------------------------------------
-    // MEMORY BEFORE WARM-UP
+    // MEMORY BEFORE BENCHMARK
     // --------------------------------------------------------
 
     size_t heapBefore = ESP.getFreeHeap();
-    size_t minHeapBefore = ESP.getMinFreeHeap();
-
-
-    Serial.print("Free heap before benchmark: ");
-    Serial.print(heapBefore);
-    Serial.println(" bytes");
 
 
     // --------------------------------------------------------
     // WARM-UP
     // --------------------------------------------------------
 
-    Serial.println();
-    Serial.print("Running warm-up: ");
-    Serial.print(WARMUP_RUNS);
-    Serial.println(" predictions");
+    Serial.print("Warm-up predictions: ");
+    Serial.println(WARMUP_RUNS);
 
     for (int i = 0; i < WARMUP_RUNS; i++) {
 
@@ -269,20 +427,11 @@ void runModelBenchmark() {
 
 
     // --------------------------------------------------------
-    // MEMORY AFTER WARM-UP
+    // INFERENCE TIME BENCHMARK
     // --------------------------------------------------------
 
-    size_t heapAfterWarmup = ESP.getFreeHeap();
-
-
-    // --------------------------------------------------------
-    // INFERENCE TIME
-    // --------------------------------------------------------
-
-    Serial.println();
-    Serial.print("Running benchmark: ");
-    Serial.print(NUM_RUNS);
-    Serial.println(" predictions");
+    Serial.print("Benchmark predictions: ");
+    Serial.println(NUM_RUNS);
 
 
     int64_t startTime = esp_timer_get_time();
@@ -298,12 +447,14 @@ void runModelBenchmark() {
     int64_t endTime = esp_timer_get_time();
 
 
-    int64_t totalTimeUs = endTime - startTime;
+    // --------------------------------------------------------
+    // CALCULATE INFERENCE TIME
+    // --------------------------------------------------------
 
+    int64_t totalTimeUs = endTime - startTime;
 
     double averageTimeUs =
         (double) totalTimeUs / NUM_RUNS;
-
 
     double averageTimeMs =
         averageTimeUs / 1000.0;
@@ -314,95 +465,93 @@ void runModelBenchmark() {
     // --------------------------------------------------------
 
     size_t heapAfter = ESP.getFreeHeap();
-    size_t minHeapAfter = ESP.getMinFreeHeap();
 
 
     // --------------------------------------------------------
-    // RESULTS
+    // FIRMWARE SIZE
+    // --------------------------------------------------------
+
+    size_t currentFirmwareSize =
+        ESP.getSketchSize();
+
+
+    // Model size compared with baseline
+
+    int64_t modelSizeBytes =
+        (int64_t) currentFirmwareSize -
+        (int64_t) BASELINE_FIRMWARE_SIZE;
+
+
+    float modelSizeKB =
+        (float) modelSizeBytes / 1024.0;
+
+
+    // --------------------------------------------------------
+    // RAM IMPACT
+    // --------------------------------------------------------
+    //
+    // Compare current free heap with baseline free heap.
+
+    int64_t ramImpact =
+        (int64_t) BASELINE_FREE_HEAP -
+        (int64_t) heapBefore;
+
+
+    // --------------------------------------------------------
+    // PRINT INDIVIDUAL RESULTS
     // --------------------------------------------------------
 
     Serial.println();
-    Serial.println("==================================================");
-    Serial.println("                 BENCHMARK RESULTS");
-    Serial.println("==================================================");
 
-
-    // --------------------------------------------------------
-    // INFERENCE TIME
-    // --------------------------------------------------------
-
-    Serial.println();
-    Serial.println("[INFERENCE TIME]");
-
-    Serial.print("Total time: ");
-    Serial.print((long long) totalTimeUs);
-    Serial.println(" us");
-
-    Serial.print("Number of predictions: ");
-    Serial.println(NUM_RUNS);
+    Serial.println("-------------- MEASUREMENTS --------------");
 
     Serial.print("Average inference time: ");
-    Serial.print(averageTimeUs, 6);
-    Serial.println(" us");
-
-    Serial.print("Average inference time: ");
-    Serial.print(averageTimeMs, 9);
+    Serial.print(averageTimeMs, 6);
     Serial.println(" ms");
 
-
-    // --------------------------------------------------------
-    // RAM / HEAP
-    // --------------------------------------------------------
-
-    Serial.println();
-    Serial.println("[RAM / HEAP USAGE]");
-
-    Serial.print("Free heap before: ");
-    Serial.print(heapBefore);
+    Serial.print("Current firmware size: ");
+    Serial.print(currentFirmwareSize);
     Serial.println(" bytes");
 
-    Serial.print("Free heap after warm-up: ");
-    Serial.print(heapAfterWarmup);
+    Serial.print("Model size contribution: ");
+    Serial.print(modelSizeKB, 3);
+    Serial.println(" KB");
+
+    Serial.print("Free heap before benchmark: ");
+    Serial.print(heapBefore);
     Serial.println(" bytes");
 
     Serial.print("Free heap after benchmark: ");
     Serial.print(heapAfter);
     Serial.println(" bytes");
 
-    Serial.print("Minimum free heap before: ");
-    Serial.print(minHeapBefore);
+    Serial.print("RAM impact: ");
+    Serial.print(ramImpact);
     Serial.println(" bytes");
 
-    Serial.print("Minimum free heap after: ");
-    Serial.print(minHeapAfter);
-    Serial.println(" bytes");
-
-
-    int64_t heapDifference =
-        (int64_t) heapBefore -
-        (int64_t) heapAfterWarmup;
-
-
-    Serial.print("Heap change after model execution: ");
-    Serial.print(heapDifference);
-    Serial.println(" bytes");
+    Serial.println("------------------------------------------");
 
 
     // --------------------------------------------------------
-    // LAST PREDICTION
+    // PRINT FINAL TABLE ROW
+    // --------------------------------------------------------
+
+    printResultTable(
+        averageTimeMs,
+        modelSizeKB,
+        ramImpact
+    );
+
+
+    // --------------------------------------------------------
+    // CHECK PREDICTION
     // --------------------------------------------------------
 
     Serial.println();
-    Serial.println("[CHECK]");
 
     Serial.print("Last prediction: ");
     Serial.println(predictionResult);
 
-
-    Serial.println();
-    Serial.println("==================================================");
-    Serial.println("               BENCHMARK COMPLETE");
-    Serial.println("==================================================");
 }
 
 
@@ -416,25 +565,34 @@ void setup() {
 
     delay(3000);
 
+
+    // --------------------------------------------------------
+    // PRINT CONFIGURATION
+    // --------------------------------------------------------
+
     printConfiguration();
 
-    printFirmwareSize();
 
-    printMemoryInfo("After boot");
+    // --------------------------------------------------------
+    // BASELINE BUILD
+    // --------------------------------------------------------
+
+#if MODEL_TYPE == 0
+
+    runBaselineBenchmark();
+
+#endif
 
 
-    #if MODEL_TYPE == 0
+    // --------------------------------------------------------
+    // DECISION TREE / NAIVE BAYES BUILD
+    // --------------------------------------------------------
 
-        runBaselineBenchmark();
+#if MODEL_TYPE == 1 || MODEL_TYPE == 2
 
-    #endif
+    runModelBenchmark();
 
-
-    #if MODEL_TYPE == 1 || MODEL_TYPE == 2
-
-        runModelBenchmark();
-
-    #endif
+#endif
 
 }
 
